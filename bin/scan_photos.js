@@ -2,6 +2,7 @@ const config = require('../config');
 const path = require('path');
 const glob = require('glob');
 const colors = require('colors');
+const sha256file = require('sha256-file')
 
 const mongoose = require('../app/services/mongoose');
 const Photo = require('../app/models/photo');
@@ -38,7 +39,10 @@ async function find(path) {
 }
 
 function process_photo(path) {
-  photo = new Photo({path: path});
+  photo = new Photo({
+    path: path,
+    sha256: sha256file(path)
+  });
   photo.save((err) => {
     if (err) console.log(err);
   });
