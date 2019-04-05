@@ -9,41 +9,54 @@ const Photo = require('../app/models/photo');
 
 
 
-scan_dir();
+scan_dir()
+.then(_ => {
+  console.log('DONE');
+  mongoose.disconnect();
+})
+.catch( err => {
+  console.log(err);
+});
 
-function scan_dir() {
+async function scan_dir() {
   process.chdir(config.photodir);
-  glob('**/*.jpg', (er, files) => {
-    if ( er ) { throw(er)};
-    files.forEach((el) => {
-        find_or_insert(path.relative(config.photodir, el));
-    })
-  })
+  files = glob.sync('**/*.jpg');
+  await Promise.all(files.map(async el => {
+    console.log(el);
+    await find_or_insert(path.relative(config.photodir, el))
+  }))
 }
 
 async function find_or_insert(file) {
-  find(file)
-    .then((photo) => {
+
+  await find(file).then(async (photo) => {
       if( !photo ) {
-        process_photo(file);
+        console.log('Save photo');
+        await process_photo(file);
+      }
+      else {
+        console.log('Already in DB');
       }
     })
     .catch(err => {
       console.log('Oops in find: ' + err);
-    })
+    });
+
 }
 
 async function find(path) {
-    var query = Photo.findOne( {path: path});
-    return await query.exec();
+    return await Photo.findOne( {path: path}, function(err, photo) {
+      //if (err) return Promise.reject(err);
+      return Promise.resolve(photo);
+    });
 }
 
-function process_photo(path) {
+async function process_photo(path) {
   photo = new Photo({
     path: path,
     sha256: sha256file(path)
   });
-  photo.save((err) => {
-    if (err) console.log(err);
+  return await photo.save((err) => {
+    //if (err) console.log(err);
   });
 }
